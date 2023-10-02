@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/fsnotify/fsevents"
+	"github.com/eXotech-code/fsevents"
 )
 
 func main() {
@@ -32,6 +32,7 @@ func main() {
 		Device:  dev,
 		Flags:   fsevents.FileEvents | fsevents.WatchRoot}
 	es.Start()
+	defer es.Stop()
 	ec := es.Events
 
 	log.Println("Device UUID", fsevents.GetDeviceUUID(dev))

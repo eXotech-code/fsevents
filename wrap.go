@@ -24,6 +24,10 @@ static FSEventStreamRef EventStreamCreate(FSEventStreamContext * context, uintpt
 	context->info = (void*) info;
 	return FSEventStreamCreate(NULL, (FSEventStreamCallback) fsevtCallback, context, paths, since, latency, flags);
 }
+
+static void releaseDispatchQueue(dispatch_queue_t dq) {
+	dispatch_release(dq);
+}
 */
 import "C"
 import (
@@ -478,8 +482,9 @@ func flush(stream fsEventStreamRef, sync bool) {
 }
 
 // stop requests fsevents stops streaming events
-func stop(stream fsEventStreamRef) {
+func stop(stream fsEventStreamRef, dispatchQueue dispatchQueueRef) {
 	C.FSEventStreamStop(stream)
 	C.FSEventStreamInvalidate(stream)
 	C.FSEventStreamRelease(stream)
+	C.releaseDispatchQueue(C.dispatch_queue_t(dispatchQueue))
 }
