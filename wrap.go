@@ -7,6 +7,7 @@ package fsevents
 #cgo LDFLAGS: -framework CoreServices
 #include <CoreServices/CoreServices.h>
 #include <sys/stat.h>
+#include <dispatch/dispatch.h>
 
 static CFArrayRef ArrayCreateMutable(int len) {
 	return CFArrayCreateMutable(NULL, len, &kCFTypeArrayCallBacks);
@@ -351,7 +352,7 @@ func copyCFString(cfs C.CFStringRef) C.CFStringRef {
 }
 
 // cfRunLoopRef wraps C.CFRunLoopRef
-type cfRunLoopRef C.CFRunLoopRef
+type dispatchQueueRef C.dispatch_queue_t
 
 // EventIDForDeviceBeforeTime returns an event ID before a given time.
 func EventIDForDeviceBeforeTime(dev int32, before time.Time) uint64 {
@@ -434,15 +435,15 @@ func (es *EventStream) start(paths []string, callbackInfo uintptr) error {
 
 	go func() {
 		runtime.LockOSThread()
-		es.rlref = cfRunLoopRef(C.CFRunLoopGetCurrent())
-		C.CFRetain(C.CFTypeRef(es.rlref))
-		C.FSEventStreamScheduleWithRunLoop(es.stream, C.CFRunLoopRef(es.rlref), C.kCFRunLoopDefaultMode)
+		es.dispatchQueue = dispatchQueueRef(C.dispatch_queue_create(C.CString("fsevents"), nil))
+		// C.FSEventStreamScheduleWithRunLoop(es.stream, C.CFRunLoopRef(es.rlref), C.kCFRunLoopDefaultMode)
+		C.FSEventStreamSetDispatchQueue(es.stream, C.dispatch_queue_t(es.dispatchQueue))
 		if C.FSEventStreamStart(es.stream) == 0 {
 			// cleanup stream and runloop
 			C.FSEventStreamInvalidate(es.stream)
 			C.FSEventStreamRelease(es.stream)
-			C.CFRelease(C.CFTypeRef(es.rlref))
 			es.stream = nil
+			es.dispatchQueue = nil
 			started <- fmt.Errorf("failed to start eventstream")
 			close(started)
 			return
@@ -477,10 +478,8 @@ func flush(stream fsEventStreamRef, sync bool) {
 }
 
 // stop requests fsevents stops streaming events
-func stop(stream fsEventStreamRef, rlref cfRunLoopRef) {
+func stop(stream fsEventStreamRef) {
 	C.FSEventStreamStop(stream)
 	C.FSEventStreamInvalidate(stream)
 	C.FSEventStreamRelease(stream)
-	C.CFRunLoopStop(C.CFRunLoopRef(rlref))
-	C.CFRelease(C.CFTypeRef(rlref))
 }

@@ -16,7 +16,7 @@ type Event struct {
 	// to its device's root.
 	// Use DeviceForPath to determine the absolute path that's
 	// being referred to.
-	Path  string
+	Path string
 
 	// Flags holds details what has happened.
 	Flags EventFlags
@@ -33,7 +33,7 @@ type Event struct {
 	// and resume processing them later from a newly-created
 	// EventStream, this is the value you would pass for the
 	// EventStream.EventID along with Resume=true.
-	ID    uint64
+	ID uint64
 }
 
 // DeviceForPath returns the device ID for the specified volume.
@@ -49,32 +49,32 @@ func DeviceForPath(path string) (int32, error) {
 // You can provide your own event channel if you wish (or one will be
 // created on Start).
 //
-//   es := &EventStream{Paths: []string{"/tmp"}, Flags: 0}
-//   es.Start()
-//   es.Stop()
-//   ...
+//	es := &EventStream{Paths: []string{"/tmp"}, Flags: 0}
+//	es.Start()
+//	es.Stop()
+//	...
 type EventStream struct {
-	stream       fsEventStreamRef
-	rlref        cfRunLoopRef
-	hasFinalizer bool
-	registryID   uintptr
-	uuid         string
+	stream        fsEventStreamRef
+	dispatchQueue dispatchQueueRef
+	hasFinalizer  bool
+	registryID    uintptr
+	uuid          string
 
 	// Events holds the channel on which events will be sent.
 	// It's initialized by EventStream.Start if nil.
-	Events  chan []Event
+	Events chan []Event
 
 	// Paths holds the set of paths to watch, each
 	// specifying the root of a filesystem hierarchy to be
 	// watched for modifications.
-	Paths   []string
+	Paths []string
 
 	// Flags specifies what events to receive on the stream.
-	Flags   CreateFlags
+	Flags CreateFlags
 
 	// Resume specifies that watching should resume from the event
 	// specified by EventID.
-	Resume  bool
+	Resume bool
 
 	// EventID holds the most recent event ID.
 	//
@@ -165,7 +165,7 @@ func (es *EventStream) Flush(sync bool) {
 // Stop stops listening to the event stream.
 func (es *EventStream) Stop() {
 	if es.stream != nil {
-		stop(es.stream, es.rlref)
+		stop(es.stream)
 		es.stream = nil
 	}
 
