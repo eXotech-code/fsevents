@@ -34,7 +34,6 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"time"
 	"unsafe"
@@ -317,37 +316,31 @@ func getStreamRefPaths(f fsEventStreamRef) []string {
 	return ss
 }
 
-func cfStringToGoString(cfs C.CFStringRef) string {
+func cfStringToGoString(cfs C.CFStringRef) (str string) {
 	if cfs == nullCFStringRef {
-		return ""
+		return
 	}
 	cfStr := copyCFString(cfs)
 	length := C.CFStringGetLength(cfStr)
 	if length == 0 {
 		// short-cut for empty strings
-		return ""
+		return
 	}
 	cfRange := C.CFRange{0, length}
 	enc := C.CFStringEncoding(C.kCFStringEncodingUTF8)
 	// first find the buffer size necessary
 	var usedBufLen C.CFIndex
 	if C.CFStringGetBytes(cfStr, cfRange, enc, 0, C.false, nil, 0, &usedBufLen) == 0 {
-		return ""
+		return
 	}
 
 	bs := make([]byte, usedBufLen)
 	buf := (*C.UInt8)(unsafe.Pointer(&bs[0]))
 	if C.CFStringGetBytes(cfStr, cfRange, enc, 0, C.false, buf, usedBufLen, nil) == 0 {
-		return ""
+		return
 	}
 
-	// Create a string (byte array) backed by C byte array
-	header := (*reflect.SliceHeader)(unsafe.Pointer(&bs))
-	strHeader := &reflect.StringHeader{
-		Data: header.Data,
-		Len:  header.Len,
-	}
-	return *(*string)(unsafe.Pointer(strHeader))
+	return string(bs)
 }
 
 // copyCFString makes an immutable copy of a string with CFStringCreateCopy.
